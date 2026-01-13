@@ -1,0 +1,28 @@
+# Caddyfile for production HTTPS deployment
+#
+# Usage:
+#   1. Replace rss.example.com with your domain
+#   2. Uncomment the caddy service in docker-compose.yml
+#   3. docker-compose up -d
+#
+# Caddy will automatically obtain and renew SSL certificates from Let's Encrypt
+
+rss.example.com {
+    # Reverse proxy to the RSS generator
+    reverse_proxy rss-generator:8080
+
+    # Enable compression for XML files
+    encode gzip
+
+    # Cache headers for feeds (1 hour)
+    header /feeds/* Cache-Control "public, max-age=3600"
+
+    # CORS headers for feed readers
+    header /feeds/* Access-Control-Allow-Origin "*"
+
+    # Logging
+    log {
+        output stdout
+        format console
+    }
+}

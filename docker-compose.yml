@@ -1,0 +1,54 @@
+# RSS Feed Generator - Docker Compose Configuration
+#
+# Usage:
+#   docker-compose up -d              # Start in background
+#   docker-compose logs -f            # View logs
+#   docker-compose down               # Stop
+#
+# Feeds will be available at:
+#   http://localhost:8080/feeds/feed_<name>.xml
+
+services:
+  rss-generator:
+    build: .
+    container_name: rss-feeds
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      # Persist generated feeds and cache
+      - ./feeds:/app/feeds
+      - ./cache:/app/cache
+    environment:
+      # Base URL for feed self-links (change to your domain for production)
+      - FEED_BASE_URL=${FEED_BASE_URL:-http://localhost:8080/feeds}
+      # Cron schedule (default: hourly)
+      - CRON_SCHEDULE=${CRON_SCHEDULE:-0 * * * *}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/feeds/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+# Optional: Add Caddy for HTTPS/reverse proxy in production
+#
+# To use Caddy, uncomment below and set your domain in Caddyfile:
+#
+#   caddy:
+#     image: caddy:2-alpine
+#     container_name: rss-caddy
+#     restart: unless-stopped
+#     ports:
+#       - "80:80"
+#       - "443:443"
+#     volumes:
+#       - ./Caddyfile:/etc/caddy/Caddyfile
+#       - caddy_data:/data
+#       - caddy_config:/config
+#     depends_on:
+#       - rss-generator
+#
+# volumes:
+#   caddy_data:
+#   caddy_config:

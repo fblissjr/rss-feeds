@@ -10,6 +10,8 @@ Instructions for Claude Code and contributors working on this repository.
   - [Feed Generator Patterns](#feed-generator-patterns)
   - [When to Use Each Pattern](#when-to-use-each-pattern)
   - [Feed Link Setup (Important)](#feed-link-setup-important)
+- [RSS Discovery Tool](#rss-discovery-tool)
+- [Self-Hosting](#self-hosting)
 - [Adding a New Feed](#adding-a-new-feed)
   - [Step 1: Analyze the Target Blog](#step-1-analyze-the-target-blog)
   - [Step 2: Download HTML Sample](#step-2-download-html-sample)
@@ -42,6 +44,16 @@ make dev_test_feed        # Run test feed generator
 # Run single generator directly
 python feed_generators/ollama_blog.py
 
+# Discover existing RSS feeds
+python feed_generators/discover_rss.py https://example.com/blog
+python feed_generators/discover_rss.py -q https://medium.com/@user  # Quiet mode
+
+# Self-hosting with Docker
+cp .env.example .env      # Configure environment
+docker-compose up -d      # Start container (feeds at http://localhost:8080/feeds/)
+docker-compose logs -f    # View logs
+docker-compose down       # Stop
+
 # CI/CD
 make ci_trigger_feeds_workflow    # Trigger GitHub Action manually
 make ci_run_feeds_workflow_local  # Test workflow locally with act
@@ -52,11 +64,19 @@ make ci_run_feeds_workflow_local  # Test workflow locally with act
 ```
 feed_generators/           # Python scripts that scrape blogs and generate RSS
   run_all_feeds.py         # Orchestrator that runs all generators
-  utils.py                 # Shared utilities (setup_feed_links, get_project_root, etc.)
+  utils.py                 # Shared utilities (setup_feed_links, FEED_BASE_URL, etc.)
+  discover_rss.py          # RSS feed discovery tool
   <source>_blog.py         # Individual feed generators
 feeds/                     # Output directory for feed_*.xml files
 cache/                     # JSON cache for paginated/dynamic feeds
 makefiles/                 # Modular Makefile includes (feeds.mk, env.mk, dev.mk, ci.mk)
+
+# Self-hosting infrastructure
+Dockerfile                 # Container build with Chrome/Selenium support
+docker-compose.yml         # Service orchestration
+docker-entrypoint.sh       # Startup script with cron scheduling
+Caddyfile                  # Production HTTPS reverse proxy config
+.env.example               # Environment variable template
 ```
 
 ### Feed Generator Patterns
@@ -143,6 +163,81 @@ setup_feed_links(fg, blog_url="https://example.com/blog", feed_name="example")
 - `rel="alternate"` must be set **last** → becomes the main `<link>`
 
 Wrong order produces `<link>https://.../feed_example.xml</link>` instead of the blog URL.
+
+## RSS Discovery Tool
+
+Before building a scraper, use the discovery tool to check if a site already has an RSS feed.
+
+**File**: `feed_generators/discover_rss.py`
+
+```bash
+# Discover feeds for any URL
+python feed_generators/discover_rss.py https://medium.com/@username
+python feed_generators/discover_rss.py https://publication.substack.com
+
+# Quiet mode (URLs only)
+python feed_generators/discover_rss.py -q https://example.com
+
+# Verified feeds only
+python feed_generators/discover_rss.py -v https://example.com
+```
+
+**Discovery methods** (in order of reliability):
+1. Platform-specific patterns (Medium, Substack, WordPress, etc.)
+2. HTML `<link rel="alternate" type="application/rss+xml">` tags
+3. Common feed paths (`/feed`, `/rss`, `/atom.xml`, etc.)
+
+**Supported platforms**: Medium, Substack, WordPress, Blogger, Tumblr, GitHub Releases, YouTube, Reddit
+
+**Key functions**:
+- `discover_feeds(url)` - Main entry point, returns list of `DiscoveredFeed`
+- `is_valid_feed(url)` - Verifies URL returns valid RSS/Atom content
+- `transform_*_url()` - Platform-specific URL transformations
+
+## Self-Hosting
+
+Run your own instance without GitHub dependency.
+
+### Files
+
+| File | Purpose |
+|------|---------|
+| `Dockerfile` | Container build with Chrome for Selenium |
+| `docker-compose.yml` | Orchestration with volume mounts |
+| `docker-entrypoint.sh` | Startup script with cron scheduling |
+| `Caddyfile` | Production HTTPS configuration |
+| `.env.example` | Environment variable template |
+
+### Quick Start
+
+```bash
+cp .env.example .env
+docker-compose up -d
+# Feeds at http://localhost:8080/feeds/
+```
+
+### Configuration
+
+The feed base URL is configurable via environment variable:
+
+```python
+# In utils.py
+FEED_BASE_URL = os.getenv("FEED_BASE_URL", "https://raw.githubusercontent.com/...")
+```
+
+Set `FEED_BASE_URL` in `.env` to your domain for self-hosting:
+
+```bash
+FEED_BASE_URL=https://rss.yourdomain.com/feeds
+```
+
+### Production (HTTPS)
+
+1. Edit `Caddyfile` with your domain
+2. Uncomment Caddy service in `docker-compose.yml`
+3. `docker-compose up -d`
+
+Caddy handles SSL certificates automatically via Let's Encrypt.
 
 ## Adding a New Feed
 

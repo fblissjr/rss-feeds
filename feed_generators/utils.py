@@ -1,9 +1,17 @@
 """Shared utilities for feed generators."""
 
+import os
 from pathlib import Path
 from typing import Any
 
 from feedgen.feed import FeedGenerator
+
+# Default feed base URL - can be overridden via environment variable
+# For self-hosting, set FEED_BASE_URL to your domain (e.g., https://rss.example.com/feeds)
+DEFAULT_FEED_BASE_URL = (
+    "https://raw.githubusercontent.com/Olshansk/rss-feeds/main/feeds"
+)
+FEED_BASE_URL = os.getenv("FEED_BASE_URL", DEFAULT_FEED_BASE_URL)
 
 
 def get_project_root():
@@ -39,7 +47,7 @@ def setup_feed_links(fg: FeedGenerator, blog_url: str, feed_name: str) -> None:
     """
     # Self link first - this becomes <atom:link rel="self">
     fg.link(
-        href=f"https://raw.githubusercontent.com/Olshansk/rss-feeds/main/feeds/feed_{feed_name}.xml",
+        href=f"{FEED_BASE_URL}/feed_{feed_name}.xml",
         rel="self",
     )
     # Alternate link last - this becomes the main <link>

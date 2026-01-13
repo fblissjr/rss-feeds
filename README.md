@@ -44,6 +44,11 @@ You know that blog you like that doesn't have an RSS feed and might never will?
   - [Subscribe to a Feed](#subscribe-to-a-feed)
   - [Request a new Feed](#request-a-new-feed)
 - [Create a new a Feed](#create-a-new-a-feed)
+- [Discover Existing Feeds](#discover-existing-feeds)
+- [Self-Hosting](#self-hosting)
+  - [Quick Start with Docker](#quick-start-with-docker)
+  - [Production Deployment](#production-deployment)
+  - [Configuration](#configuration)
 - [Star History](#star-history)
 - [Ideas](#ideas)
 - [How It Works](#how-it-works)
@@ -80,6 +85,95 @@ If I do, consider supporting my 🌟🧋 addiction by [buying me a coffee](https
 ```bash
 Use @cmd_rss_feed_generator.md to convert @<html_file>.html to a RSS feed for <blog_url>.
 ```
+
+## Discover Existing Feeds
+
+Before building a scraper, check if the site already has an RSS feed. Many platforms have hidden or undocumented feeds.
+
+```bash
+# Activate virtual environment
+source .venv/bin/activate
+
+# Discover feeds for any URL
+python feed_generators/discover_rss.py https://medium.com/@username
+python feed_generators/discover_rss.py https://publication.substack.com
+python feed_generators/discover_rss.py https://example.com/blog
+```
+
+The discovery tool checks:
+
+1. **HTML `<link>` tags** - Standard feed advertisement in page head
+2. **Common paths** - `/feed`, `/rss`, `/atom.xml`, etc.
+3. **Platform patterns** - Known feed URLs for popular platforms
+
+### Supported Platforms
+
+| Platform | Feed URL Pattern |
+|----------|------------------|
+| Medium | `medium.com/feed/@username` |
+| Substack | `publication.substack.com/feed` |
+| WordPress | `site.com/feed/` |
+| Ghost | `site.com/rss/` |
+| Blogger | `site.blogspot.com/feeds/posts/default` |
+| Tumblr | `site.tumblr.com/rss` |
+| YouTube | `youtube.com/feeds/videos.xml?channel_id=ID` |
+| Reddit | `reddit.com/r/subreddit/.rss` |
+| GitHub Releases | `github.com/user/repo/releases.atom` |
+
+## Self-Hosting
+
+Run your own RSS feed generator without depending on GitHub. The Docker setup includes automatic feed generation on a schedule and serves feeds via HTTP.
+
+### Quick Start with Docker
+
+```bash
+# Clone the repo
+git clone https://github.com/Olshansk/rss-feeds.git
+cd rss-feeds
+
+# Copy and configure environment
+cp .env.example .env
+
+# Start the container
+docker-compose up -d
+
+# Feeds are now available at:
+# http://localhost:8080/feeds/feed_<name>.xml
+```
+
+### Production Deployment
+
+For HTTPS with automatic certificate management:
+
+1. Edit `Caddyfile` and replace `rss.example.com` with your domain
+2. Uncomment the Caddy service in `docker-compose.yml`
+3. Set your domain in `.env`:
+
+```bash
+FEED_BASE_URL=https://rss.yourdomain.com/feeds
+```
+
+4. Start the services:
+
+```bash
+docker-compose up -d
+```
+
+Caddy will automatically obtain and renew SSL certificates from Let's Encrypt.
+
+### Configuration
+
+Environment variables (set in `.env`):
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `FEED_BASE_URL` | `http://localhost:8080/feeds` | Base URL for feed self-links |
+| `CRON_SCHEDULE` | `0 * * * *` | Feed update schedule (default: hourly) |
+
+Example schedules:
+- `0 * * * *` - Every hour (default)
+- `*/30 * * * *` - Every 30 minutes
+- `0 */6 * * *` - Every 6 hours
 
 ## Star History
 
